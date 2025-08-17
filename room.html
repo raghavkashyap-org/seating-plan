@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Seating Planner • Room</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Export libs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script> <!-- Re-added html2canvas -->
+</head>
+<body class="page page--room">
+  <header class="topbar">
+    <div class="brand clickable" id="backHome" title="Back">
+      <svg class="icon-back" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6l6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <h1 class="brand__title" id="roomTitle">Loading…</h1>
+      <div class="pulse" aria-hidden="true"></div>
+    </div>
+
+    <div class="topbar__actions">
+      <button id="themeToggle" class="icon-btn" aria-label="Toggle theme" title="Toggle theme">
+        <span class="icon icon--theme"></span>
+      </button>
+
+      <!-- Removed: Roles from topbar__actions as per new structure -->
+    </div>
+  </header>
+
+  <!-- Removed: <nav class="secondary-nav"> block -->
+
+  <main class="room-main">
+    <!-- Parallel Section: Seat Grid and Assigned Seats Table -->
+    <div class="grid-and-table-parallel-wrapper">
+
+      <div class="seat-grid-display-card card"> <!-- The main seat grid box -->
+        <div class="legend"> <!-- Legend moved here -->
+          <span><i class="legend-dot state--empty"></i>Empty</span>
+          <span><i class="legend-dot state--assigned"></i>Assigned</span>
+          <span><i class="legend-dot state--selected"></i>Selected</span>
+          <span><i class="legend-dot state--profile"></i>Profile</span>
+        </div>
+        <!-- New blackboard display div -->
+        <div class="blackboard-display">
+          <!-- Content for blackboard can go here, e.g., "Front of Classroom" -->
+          <p>Front of Classroom</p>
+        </div>
+        <div id="grid" class="grid"></div> <!-- The actual seat grid -->
+      </div>
+
+      <div class="assigned-seats-section card"> <!-- Assigned seats table -->
+        <section class="table">
+          <div class="table__header">
+            <h2>Assigned Seats</h2>
+            <input type="search" id="searchBox" placeholder="Search student…" class="input" />
+          </div>
+          <div id="tableContainer" class="table__container"></div>
+        </section>
+      </div>
+
+    </div> <!-- End grid-and-table-parallel-wrapper -->
+
+    <!-- Section for Export and Reset Buttons (at the bottom) -->
+    <div class="export-reset-section card">
+      <div class="board__actions">
+        <button id="btnExportXlsx" class="btn btn--soft">Export Excel</button>
+        <button id="btnExportPdf" class="btn btn--soft">Export PDF</button>
+        <button id="btnReset" class="btn btn--danger">Admin Reset</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Assign bar (bottom sheet) -->
+  <div id="assignBar" class="assign-bar">
+    <div class="assign-bar__handle" aria-hidden="true"></div>
+    <div class="assign-bar__content">
+      <div class="assign-bar__meta">
+        <div>
+          <div class="mini-label">Seat</div>
+          <div id="assignSeatId" class="badge"></div>
+        </div>
+      </div>
+      <div class="assign-bar__form">
+        <input id="assignInputName" type="text" class="input input--lg" placeholder="Enter student name" />
+        <input id="assignInputRollNo" type="text" class="input input--lg" placeholder="Enter student roll number" />
+        <button id="assignSave" class="btn btn--primary btn--lg">Assign</button>
+        <button id="assignCancel" class="btn btn--ghost btn--lg">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile modal -->
+  <div id="overlay" class="overlay"></div>
+  <div id="profileModal" class="modal">
+    <div class="modal__header">
+      <h3>Student Profile</h3>
+      <button id="modalClose" class="icon-btn" aria-label="Close"><span class="icon icon--close"></span></button>
+    </div>
+    <div class="modal__content">
+      <div class="profile-row">
+        <div class="avatar">👤</div>
+        <div class="profile-fields">
+          <div><span class="mini-label">Name</span><strong id="pName"></strong></div>
+          <div><span class="mini-label">Roll No</span><strong id="pRollNo"></strong></div>
+          <div><span class="mini-label">Seat</span><strong id="pSeat"></strong></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn--soft" id="jumpToSeat">Highlight Seat</button>
+      <button class="btn btn--ghost" id="modalOk">OK</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Read query params
+      const params = new URLSearchParams(window.location.search);
+      const room = params.get('room');
+      const theme = params.get('theme') || localStorage.getItem('sp.theme') || 'light';
+      const role = params.get('role') || localStorage.getItem('sp.role') || 'admin';
+      document.documentElement.dataset.theme = theme;
+      localStorage.setItem('sp.theme', theme);
+      localStorage.setItem('sp.role', role);
+
+      restoreTheme();
+      bindThemeToggle();
+
+      // Role UI setup
+      document.querySelectorAll('.chip--role').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.role === role);
+        chip.addEventListener('click', () => {
+          document.querySelectorAll('.chip--role').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          localStorage.setItem('sp.role', chip.dataset.role);
+          applyRole(chip.dataset.role);
+        });
+      });
+
+      document.getElementById('backHome').addEventListener('click', () => {
+        window.location.href = 'index.html';
+      });
+
+      if(!room || !roomsData[room]){
+        document.getElementById('roomTitle').textContent = 'Unknown Room';
+        return;
+      }
+
+      // Animated heading
+      const title = document.getElementById('roomTitle');
+      title.textContent = room;
+      title.classList.add('title-animate');
+
+      // Render seat grid
+      setupRoom(room);
+
+      // Exports + reset (admin only)
+      document.getElementById('btnExportXlsx').addEventListener('click', exportXlsx);
+      document.getElementById('btnExportPdf').addEventListener('click', exportPdf);
+      document.getElementById('btnReset').addEventListener('click', adminReset);
+
+      // Search filter
+      document.getElementById('searchBox').addEventListener('input', (e)=> filterTable(e.target.value));
+    });
+  </script>
+</body>
+</html>

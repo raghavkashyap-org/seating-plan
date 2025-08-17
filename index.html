@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Seating Planner • Select Room</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%232c3e50' d='M12 12a5 5 0 1 0-5-5a5 5 0 0 0 5 5m0 2c-4.42 0-8 1.79-8 4v1h16v-1c0-2.21-3.58-4-8-4'/%3E%3C/svg%3E" />
+</head>
+<body class="page page--landing">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo-burst" aria-hidden="true"></div>
+      <h1 class="brand__title">Seating Planner</h1>
+    </div>
+
+    <div class="topbar__actions">
+      <button id="themeToggle" class="icon-btn" aria-label="Toggle theme" title="Toggle theme">
+        <span class="icon icon--theme"></span>
+      </button>
+
+      <div class="roles">
+        <button class="chip chip--role active" data-role="admin" title="Admin">👑 Admin</button>
+        <button class="chip chip--role" data-role="user" title="User">🧑‍🎓 User</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="hero">
+    <div class="hero__content card">
+      <h2 class="hero__title">Choose a room to get started</h2>
+      <p class="hero__subtitle">Ultra-fast interactive seating plans with export to Excel/PDF, profiles, and themes.</p>
+
+      <div class="room-picker">
+        <label for="roomSelect" class="room-picker__label">Select Room</label>
+        <select id="roomSelect" class="room-picker__select"></select>
+        <button id="enterRoom" class="btn btn--primary btn--xl">Enter Room</button>
+      </div>
+
+      <div class="hero__preview">
+        <div class="preview-grid" aria-hidden="true">
+          <!-- purely decorative grid preview -->
+          <div class="preview-row">
+            <span class="seat seat--sm"></span><span class="seat seat--sm"></span><span class="seat seat--sm"></span>
+            <span class="aisle"></span>
+            <span class="seat seat--sm"></span><span class="seat seat--sm"></span><span class="seat seat--sm"></span><span class="seat seat--sm"></span>
+            <span class="aisle"></span>
+            <span class="seat seat--sm"></span><span class="seat seat--sm"></span>
+          </div>
+          <div class="preview-row">
+            <span class="seat seat--sm state--assigned"></span><span class="seat seat--sm"></span><span class="seat seat--sm"></span>
+            <span class="aisle"></span>
+            <span class="seat seat--sm state--selected"></span><span class="seat seat--sm"></span><span class="seat seat--sm"></span><span class="seat seat--sm"></span>
+            <span class="aisle"></span>
+            <span class="seat seat--sm"></span><span class="seat seat--sm state--profile"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <span>Tip: You can toggle <strong>Dark/Light</strong> theme anytime.</span>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    // Landing page boot
+    document.addEventListener('DOMContentLoaded', () => {
+      const select = document.getElementById('roomSelect');
+      populateRoomSelect(select); // from app.js (roomsData)
+      restoreTheme();
+      bindThemeToggle();
+
+      // role chips (purely visual on landing)
+      document.querySelectorAll('.chip--role').forEach(chip => {
+        chip.addEventListener('click', () => {
+          document.querySelectorAll('.chip--role').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          localStorage.setItem('sp.role', chip.dataset.role);
+        });
+      });
+
+      document.getElementById('enterRoom').addEventListener('click', () => {
+        const room = select.value;
+        if(!room){ select.classList.add('shake'); setTimeout(()=>select.classList.remove('shake'), 600); return; }
+        // Navigate with role and theme in URL (so second page can read quickly)
+        const theme = (document.documentElement.dataset.theme || 'light');
+        const role = localStorage.getItem('sp.role') || 'admin';
+        window.location.href = `room.html?room=${encodeURIComponent(room)}&theme=${encodeURIComponent(theme)}&role=${encodeURIComponent(role)}`;
+      });
+    });
+  </script>
+</body>
+</html>
