@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Seating Planner • Room</title>
+
+  <!-- Google Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Export libs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+
+<body class="page page--room">
+  <header class="topbar">
+    <div class="brand clickable" id="backHome" title="Back">
+      <div class="icon-btn">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7" />
+        </svg>
+      </div>
+      <h1 class="brand__title" id="roomTitle">Loading…</h1>
+    </div>
+
+    <div class="topbar__actions">
+      <button id="themeToggle" class="icon-btn" aria-label="Toggle theme" title="Toggle theme">
+        <span class="icon icon--theme"></span>
+      </button>
+    </div>
+  </header>
+
+  <main class="room-main">
+
+    <!-- Left: Seating Grid -->
+    <div class="seat-grid-display-card card">
+      <div class="legend">
+        <span><i class="legend-dot state--empty" style="background:var(--seat-empty)"></i>Empty</span>
+        <span><i class="legend-dot state--assigned" style="background:var(--seat-assigned)"></i>Assigned</span>
+        <span><i class="legend-dot state--selected" style="background:var(--seat-selected)"></i>Selected</span>
+      </div>
+
+      <div class="blackboard-display">Front of Classroom</div>
+      <div id="grid" class="grid"></div>
+
+      <!-- Export Actions (Moved inside grid card for cleaner layout or keep separate?) -->
+      <!-- Let's keep them at the bottom of the grid card for easy access -->
+      <div class="board__actions" style="margin-top: 32px; display:flex; gap:12px;">
+        <button id="btnExportXlsx" class="btn btn--soft">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          Excel
+        </button>
+        <button id="btnExportPdf" class="btn btn--soft">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="12" y1="18" x2="12" y2="12"></line>
+            <line x1="9" y1="15" x2="15" y2="15"></line>
+          </svg>
+          PDF
+        </button>
+        <button id="btnReset" class="btn btn--danger">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <polyline points="23 20 23 14 17 14"></polyline>
+            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
+          </svg>
+          Reset
+        </button>
+      </div>
+    </div>
+
+    <!-- Right: Assigned List -->
+    <div class="assigned-seats-section card">
+      <div class="table__header">
+        <h2>Assigned Seats</h2>
+        <input type="search" id="searchBox" placeholder="Search student…" class="input" />
+      </div>
+      <div id="tableContainer" class="table__container"></div>
+    </div>
+
+  </main>
+
+  <!-- Assign bar (bottom sheet) -->
+  <div id="assignBar" class="assign-bar">
+    <div class="assign-bar__content">
+      <div class="assign-bar__meta">
+        <span style="color:var(--text-muted)">Assigning Seat</span>
+        <div id="assignSeatId" class="badge" style="font-weight:800; font-size:1.2rem; color:var(--primary)"></div>
+      </div>
+      <div class="assign-bar__form">
+        <input id="assignInputName" type="text" class="input" placeholder="Student Name" style="max-width:200px" />
+        <input id="assignInputRollNo" type="text" class="input" placeholder="Roll Number" style="max-width:160px" />
+        <button id="assignSave" class="btn btn--primary">Confirm Assignment</button>
+        <button id="assignCancel" class="btn btn--ghost">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile modal -->
+  <div id="overlay" class="overlay"></div>
+  <div id="profileModal" class="modal card">
+    <div class="modal__header">
+      <h3 style="margin:0">Student Profile</h3>
+      <button id="modalClose" class="icon-btn"><span class="icon icon--close">✕</span></button>
+    </div>
+    <div class="modal__content">
+      <div class="avatar">👤</div>
+      <div class="profile-fields">
+        <div><span class="mini-label">Name</span><strong id="pName"></strong></div>
+        <div style="margin-top:12px"><span class="mini-label">Roll No</span><strong id="pRollNo"></strong></div>
+        <div style="margin-top:12px"><span class="mini-label">Seat</span><strong id="pSeat"
+            style="color:var(--primary)"></strong></div>
+      </div>
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn--soft" id="jumpToSeat">Locate Seat</button>
+      <button class="btn btn--primary" id="modalOk">Done</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Read query params
+      const params = new URLSearchParams(window.location.search);
+      const room = params.get('room');
+      const theme = params.get('theme') || localStorage.getItem('sp.theme') || 'light';
+      const role = params.get('role') || localStorage.getItem('sp.role') || 'admin';
+      document.documentElement.dataset.theme = theme;
+      localStorage.setItem('sp.theme', theme);
+      localStorage.setItem('sp.role', role);
+
+      restoreTheme();
+      bindThemeToggle();
+
+      // Force Admin Role for now since UI toggle is removed
+      localStorage.setItem('sp.role', 'admin');
+      applyRole('admin');
+
+      document.getElementById('backHome').addEventListener('click', () => {
+        window.location.href = 'index.html';
+      });
+
+      if (!room || !roomsData[room]) {
+        document.getElementById('roomTitle').textContent = 'Unknown Room';
+        return;
+      }
+
+      // Animated heading
+      const title = document.getElementById('roomTitle');
+      title.textContent = room;
+
+      // Render seat grid
+      setupRoom(room);
+
+      // Exports + reset (admin only)
+      document.getElementById('btnExportXlsx').addEventListener('click', exportXlsx);
+      document.getElementById('btnExportPdf').addEventListener('click', exportPdf);
+      document.getElementById('btnReset').addEventListener('click', adminReset);
+
+      // Search filter
+      document.getElementById('searchBox').addEventListener('input', (e) => filterTable(e.target.value));
+    });
+  </script>
+</body>
+
+</html>
